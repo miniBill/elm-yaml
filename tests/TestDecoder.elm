@@ -401,6 +401,6 @@ suite =
 
 {-| Utility function that sets up a test.
 -}
-given : String -> Yaml.Decoder a -> Result Yaml.Error a
+given : String -> Yaml.Decoder a -> Result (Yaml.Error String) a
 given input decoder =
     Yaml.fromString decoder input

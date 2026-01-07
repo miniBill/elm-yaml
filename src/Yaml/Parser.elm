@@ -1,4 +1,4 @@
-module Yaml.Parser exposing (Value, fromString, parser)
+module Yaml.Parser exposing (Value, fromString, parse, parser)
 
 import Dict exposing (Dict)
 import Parser as P exposing ((|.), (|=))
@@ -90,6 +90,13 @@ fromString input =
     input
         |> P.run parser
         |> Result.mapError deadEndsToString
+        |> Result.map deref
+
+
+{-| -}
+parse : String -> Result (List P.DeadEnd) Ast.Value
+parse input =
+    P.run parser input
         |> Result.map deref
 
 

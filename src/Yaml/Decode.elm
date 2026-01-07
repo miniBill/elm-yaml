@@ -1,6 +1,6 @@
 module Yaml.Decode exposing
     ( Decoder
-    , fromString, Value, Error(..), fromValue, errorToString
+    , fromString, fromStringWithParserError, Value, Error(..), fromValue, errorToString
     , string, bool, int, float, null
     , nullable, list, dict
     , field, at
@@ -30,7 +30,7 @@ to `Json.Decode`, so if you haven't worked with decoders before, reading through
 
 # Run Decoders
 
-@docs fromString, Value, Error, fromValue, errorToString
+@docs fromString, fromStringWithParserError, Value, Error, fromValue, errorToString
 
 
 # Primitives
@@ -70,6 +70,7 @@ to `Json.Decode`, so if you haven't worked with decoders before, reading through
 -}
 
 import Dict
+import Parser
 import Yaml.Parser as Yaml
 import Yaml.Parser.Ast as Ast
 
@@ -82,7 +83,7 @@ for a more comprehensive introduction!
 
 -}
 type Decoder a
-    = Decoder (Yaml.Value -> Result Error a)
+    = Decoder (Yaml.Value -> Result String a)
 
 
 
@@ -97,8 +98,8 @@ type alias Value =
 
 {-| A structured error describing how a decoder failed.
 -}
-type Error
-    = Parsing String
+type Error e
+    = Parsing e
     | Decoding String
 
 
@@ -107,12 +108,14 @@ provided `Decoder`. This will fail if the string is not
 well-formed YAML or if the `Decoder` doesn't match the
 input.
 
+If you want access to the raw `Parser.DeadEnd`s, use `fromStringWithParserError`.
+
     fromString int "4" --> Ok 4
 
     fromString int "hello" --> Err (Decoding "Expected int, got: \"hello\" (string)")
 
 -}
-fromString : Decoder a -> String -> Result Error a
+fromString : Decoder a -> String -> Result (Error String) a
 fromString decoder raw =
     case Yaml.fromString raw of
         Ok v ->
@@ -122,16 +125,40 @@ fromString decoder raw =
             Err (Parsing error)
 
 
+{-| Decode a given string into an Elm value based on the
+provided `Decoder`. This will fail if the string is not
+well-formed YAML or if the `Decoder` doesn't match the
+input.
+
+This is similar to `fromString`, but it returns the raw `Parser.DeadEnd`s.
+
+    fromStringWithParserError int "4" --> Ok 4
+
+    fromStringWithParserError int "\"" --> Err (Parsing [ ... ])
+
+-}
+fromStringWithParserError : Decoder a -> String -> Result (Error (List Parser.DeadEnd)) a
+fromStringWithParserError (Decoder decoder) raw =
+    case Yaml.parse raw of
+        Ok v ->
+            decoder v
+                |> Result.mapError Decoding
+
+        Err error ->
+            Err (Parsing error)
+
+
 {-| Run a `Decoder` on a Yaml `Value`.
 -}
-fromValue : Decoder a -> Value -> Result Error a
+fromValue : Decoder a -> Value -> Result (Error String) a
 fromValue (Decoder decoder) v =
     decoder v
+        |> Result.mapError Decoding
 
 
 {-| Convert a structured error into a `String` that is nice for debugging.
 -}
-errorToString : Error -> String
+errorToString : Error String -> String
 errorToString e =
     case e of
         Parsing msg ->
@@ -321,7 +348,7 @@ null =
 
 -}
 nullable : Decoder a -> Decoder (Maybe a)
-nullable decoder =
+nullable (Decoder decoder) =
     Decoder <|
         \v ->
             case v of
@@ -329,7 +356,7 @@ nullable decoder =
                     Ok Nothing
 
                 other ->
-                    Result.map Just (fromValue decoder other)
+                    Result.map Just (decoder other)
 
 
 {-| Decode a YAML array into an Elm `List`.
@@ -343,12 +370,12 @@ nullable decoder =
 
 -}
 list : Decoder a -> Decoder (List a)
-list decoder =
+list (Decoder decoder) =
     Decoder <|
         \v ->
             case v of
                 Ast.List_ list_ ->
-                    combineMap (fromValue decoder) list_
+                    combineMap decoder list_
 
                 Ast.Null_ ->
                     Ok []
@@ -369,7 +396,7 @@ list decoder =
 
 -}
 dict : Decoder a -> Decoder (Dict.Dict String a)
-dict decoder =
+dict (Decoder decoder) =
     Decoder <|
         \v ->
             case v of
@@ -378,7 +405,7 @@ dict decoder =
                         (\key val res ->
                             Result.andThen
                                 (\acc ->
-                                    fromValue decoder val
+                                    decoder val
                                         |> Result.map (\parsed -> Dict.insert key parsed acc)
                                 )
                                 res
@@ -522,7 +549,7 @@ fail : String -> Decoder a
 fail error =
     Decoder <|
         \_ ->
-            Err (Decoding error)
+            Err error
 
 
 {-| Create decoders that depend on previous results.
@@ -570,12 +597,16 @@ field:
 
 -}
 andThen : (a -> Decoder b) -> Decoder a -> Decoder b
-andThen next decoder =
+andThen next (Decoder decoder) =
     Decoder <|
         \v0 ->
-            case fromValue decoder v0 of
+            case decoder v0 of
                 Ok a ->
-                    fromValue (next a) v0
+                    let
+                        (Decoder nextDecoder) =
+                            next a
+                    in
+                    nextDecoder v0
 
                 Err err ->
                     Err err
@@ -645,15 +676,15 @@ oneOf ds =
 {-| Choose between (try out) two decoders.
 -}
 or : Decoder a -> Decoder a -> Decoder a
-or lp rp =
+or (Decoder lp) (Decoder rp) =
     Decoder <|
         \v ->
-            case fromValue lp v of
+            case lp v of
                 Ok a ->
                     Ok a
 
                 Err _ ->
-                    fromValue rp v
+                    rp v
 
 
 
@@ -1037,33 +1068,31 @@ combineMap f input =
     go input []
 
 
-find : List String -> Decoder a -> Ast.Value -> Result Error a
-find names decoder v0 =
+find : List String -> Decoder a -> Ast.Value -> Result String a
+find names (Decoder decoder) v0 =
     case names of
         name :: rest ->
             case v0 of
                 Ast.Record_ properties ->
                     case Dict.get name properties of
                         Just v1 ->
-                            find rest decoder v1
+                            find rest (Decoder decoder) v1
 
                         Nothing ->
-                            Err (Decoding <| "Expected property: " ++ name)
+                            Err ("Expected property: " ++ name)
 
                 _ ->
-                    Err (Decoding "Expected record")
+                    Err "Expected record"
 
         [] ->
-            fromValue decoder v0
+            decoder v0
 
 
-decodeError : String -> Ast.Value -> Result Error a
+decodeError : String -> Ast.Value -> Result String a
 decodeError expected got =
     Err
-        (Decoding
-            ("Expected "
-                ++ expected
-                ++ ", got: "
-                ++ Ast.toString got
-            )
+        ("Expected "
+            ++ expected
+            ++ ", got: "
+            ++ Ast.toString got
         )

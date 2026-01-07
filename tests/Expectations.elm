@@ -18,7 +18,7 @@ expectCloseTo expected got =
 
 {-| Utility function that checks the failure mode of a Decoder
 -}
-expectFail : String -> Result Decode.Error a -> Expect.Expectation
+expectFail : String -> Result (Decode.Error e) a -> Expect.Expectation
 expectFail expected got =
     Expect.equal (Err (Decode.Decoding expected)) got
 
