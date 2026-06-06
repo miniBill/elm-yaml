@@ -1,6 +1,6 @@
 module Yaml.Decode exposing
     ( Decoder
-    , fromString, fromStringWithParserError, Value, Error(..), fromValue, errorToString
+    , fromString, Value, Error(..), fromValue
     , string, bool, int, float, null
     , nullable, list, dict
     , field, at
@@ -30,7 +30,7 @@ to `Json.Decode`, so if you haven't worked with decoders before, reading through
 
 # Run Decoders
 
-@docs fromString, fromStringWithParserError, Value, Error, fromValue, errorToString
+@docs fromString, Value, Error, fromValue
 
 
 # Primitives
@@ -98,8 +98,8 @@ type alias Value =
 
 {-| A structured error describing how a decoder failed.
 -}
-type Error e
-    = Parsing e
+type Error
+    = Parsing (List Parser.DeadEnd)
     | Decoding String
 
 
@@ -108,16 +108,14 @@ provided `Decoder`. This will fail if the string is not
 well-formed YAML or if the `Decoder` doesn't match the
 input.
 
-If you want access to the raw `Parser.DeadEnd`s, use `fromStringWithParserError`.
-
     fromString int "4" --> Ok 4
 
     fromString int "hello" --> Err (Decoding "Expected int, got: \"hello\" (string)")
 
 -}
-fromString : Decoder a -> String -> Result (Error String) a
+fromString : Decoder a -> String -> Result Error a
 fromString decoder raw =
-    case Yaml.fromString raw of
+    case Yaml.parse raw of
         Ok v ->
             fromValue decoder v
 
@@ -125,47 +123,12 @@ fromString decoder raw =
             Err (Parsing error)
 
 
-{-| Decode a given string into an Elm value based on the
-provided `Decoder`. This will fail if the string is not
-well-formed YAML or if the `Decoder` doesn't match the
-input.
-
-This is similar to `fromString`, but it returns the raw `Parser.DeadEnd`s.
-
-    fromStringWithParserError int "4" --> Ok 4
-
-    fromStringWithParserError int "\"" --> Err (Parsing [ ... ])
-
--}
-fromStringWithParserError : Decoder a -> String -> Result (Error (List Parser.DeadEnd)) a
-fromStringWithParserError (Decoder decoder) raw =
-    case Yaml.parse raw of
-        Ok v ->
-            decoder v
-                |> Result.mapError Decoding
-
-        Err error ->
-            Err (Parsing error)
-
-
 {-| Run a `Decoder` on a Yaml `Value`.
 -}
-fromValue : Decoder a -> Value -> Result (Error String) a
+fromValue : Decoder a -> Value -> Result Error a
 fromValue (Decoder decoder) v =
     decoder v
         |> Result.mapError Decoding
-
-
-{-| Convert a structured error into a `String` that is nice for debugging.
--}
-errorToString : Error String -> String
-errorToString e =
-    case e of
-        Parsing msg ->
-            "Error in parsing: " ++ msg
-
-        Decoding msg ->
-            "Error in decoding: " ++ msg
 
 
 

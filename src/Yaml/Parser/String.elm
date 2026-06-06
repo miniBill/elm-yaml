@@ -8,16 +8,11 @@ import Yaml.Parser.Util as U
 {-| -}
 exceptions : P.Parser Ast.Value
 exceptions =
-    let
-        dashed : String -> String
-        dashed s =
-            "---" ++ s
-    in
     P.oneOf
         [ P.succeed Ast.Null_
             -- TODO
             |. P.end
-        , P.succeed (Ast.String_ << dashed)
+        , P.succeed (\s -> Ast.String_ ("---" ++ s))
             |. U.threeDashes
             |= U.remaining
         , P.succeed Ast.Null_

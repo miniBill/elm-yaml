@@ -284,13 +284,14 @@ list encode l =
         )
 
 
+wrapToString : String -> String -> (a -> String) -> List a -> String
+wrapToString open close encode l =
+    open ++ String.join ", " (List.map encode l) ++ close
+
+
 encodeInlineList : (a -> Encoder) -> List a -> String
 encodeInlineList encode l =
-    "["
-        ++ (List.map (encode >> toString 0) l
-                |> String.join ", "
-           )
-        ++ "]"
+    wrapToString "[" "]" (\i -> i |> encode |> toString 0) l
 
 
 encodeList : (a -> Encoder) -> EncoderState -> List a -> String
@@ -298,17 +299,16 @@ encodeList encode state l =
     let
         newState : EncoderState
         newState =
-            { state
-                | col = state.col + state.indent
-                , inRecord = False
+            { col = state.col + state.indent
+            , inRecord = False
+            , indent = state.indent
             }
 
         listElement : a -> String
         listElement val =
             "- "
                 ++ String.repeat (state.indent - 2) " "
-                ++ (internalConvertToString newState << encode)
-                    val
+                ++ internalConvertToString newState (encode val)
     in
     List.map listElement l
         |> String.join (indentAfter state "\n")
@@ -353,31 +353,23 @@ dict key val r =
 
 encodeInlineDict : (k -> String) -> (v -> Encoder) -> Dict k v -> String
 encodeInlineDict key val r =
-    let
-        stringify : Dict k v -> List String
-        stringify d =
-            d
-                |> Dict.toList
-                |> List.map (\( fst, snd ) -> key fst ++ ": " ++ (snd |> val |> toString 0))
-    in
-    "{"
-        ++ (stringify r |> String.join ", ")
-        ++ "}"
+    Dict.toList r
+        |> wrapToString "{" "}" (\( fst, snd ) -> key fst ++ ": " ++ toString 0 (val snd))
 
 
 encodeDict : (k -> String) -> (v -> Encoder) -> EncoderState -> Dict k v -> String
-encodeDict key val state r =
+encodeDict keyToString valueToString state r =
     let
+        newState : EncoderState
+        newState =
+            { inRecord = True
+            , col = state.col + state.indent
+            , indent = state.indent
+            }
+
         recordElement : ( k, v ) -> String
-        recordElement ( key_, val_ ) =
-            let
-                newState : EncoderState
-                newState =
-                    { state | inRecord = True, col = state.col + state.indent }
-            in
-            key key_
-                ++ ":"
-                ++ (internalConvertToString newState << val) val_
+        recordElement ( key, val ) =
+            keyToString key ++ ":" ++ internalConvertToString newState (valueToString val)
     in
     Dict.toList r
         |> List.map recordElement
@@ -418,35 +410,22 @@ record r =
 
 encodeInlineRecord : List ( String, Encoder ) -> String
 encodeInlineRecord r =
-    let
-        stringify : List ( String, Encoder ) -> List String
-        stringify vals =
-            List.map
-                (\pair ->
-                    Tuple.first pair ++ ": " ++ (Tuple.second >> toString 0) pair
-                )
-                vals
-    in
-    "{" ++ (stringify r |> String.join ", ") ++ "}"
+    wrapToString "{" "}" (\( fst, snd ) -> fst ++ ": " ++ toString 0 snd) r
 
 
 encodeRecord : EncoderState -> List ( String, Encoder ) -> String
 encodeRecord state r =
     let
+        newState : EncoderState
+        newState =
+            { inRecord = True
+            , col = state.col + state.indent
+            , indent = state.indent
+            }
+
         recordElement : ( String, Encoder ) -> String
         recordElement ( key, val ) =
-            let
-                newState : EncoderState
-                newState =
-                    { state | inRecord = True, col = state.col + state.indent }
-
-                encodedValue : String
-                encodedValue =
-                    internalConvertToString newState val
-            in
-            key
-                ++ ":"
-                ++ encodedValue
+            key ++ ":" ++ internalConvertToString newState val
     in
     List.map recordElement r
         |> String.join (indentAfter state "\n")

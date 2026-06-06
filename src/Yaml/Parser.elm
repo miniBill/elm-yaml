@@ -1,4 +1,4 @@
-module Yaml.Parser exposing (Value, fromString, parse, parser)
+module Yaml.Parser exposing (Value, parse, parser)
 
 import Dict exposing (Dict)
 import Parser as P exposing ((|.), (|=))
@@ -15,82 +15,7 @@ type alias Value =
 
 
 
--- ERROR REPORTING
-
-
-deadEndsToString : List P.DeadEnd -> String
-deadEndsToString deadends =
-    String.join "\n" <|
-        List.map deadEndToString deadends
-
-
-deadEndToString : P.DeadEnd -> String
-deadEndToString deadend =
-    "Line "
-        ++ String.fromInt deadend.row
-        ++ ", column "
-        ++ String.fromInt deadend.col
-        ++ ": "
-        ++ problemToString deadend.problem
-
-
-problemToString : P.Problem -> String
-problemToString p =
-    case p of
-        P.Expecting msg ->
-            "Expected " ++ msg
-
-        P.ExpectingInt ->
-            "Expected an integer"
-
-        P.ExpectingHex ->
-            "Expected a hexadecimal value"
-
-        P.ExpectingOctal ->
-            "Expected an octal value"
-
-        P.ExpectingBinary ->
-            "Expected a binary value"
-
-        P.ExpectingFloat ->
-            "Expected a float"
-
-        P.ExpectingNumber ->
-            "Expected a number"
-
-        P.ExpectingVariable ->
-            "Expected a variable"
-
-        P.ExpectingSymbol name ->
-            "Expected symbol '" ++ name ++ "'"
-
-        P.ExpectingKeyword name ->
-            "Expected keyword '" ++ name ++ "'"
-
-        P.ExpectingEnd ->
-            "Expected end of input"
-
-        P.UnexpectedChar ->
-            "Encountered an unexpected character"
-
-        P.Problem msg ->
-            "Problem: " ++ msg
-
-        P.BadRepeat ->
-            "Bad repeat"
-
-
-
 -- PARSER
-
-
-{-| -}
-fromString : String -> Result String Ast.Value
-fromString input =
-    input
-        |> P.run parser
-        |> Result.mapError deadEndsToString
-        |> Result.map deref
 
 
 {-| -}
@@ -266,10 +191,9 @@ listInlineValue =
 
 listInlineString : P.Parser Ast.Value
 listInlineString =
-    P.succeed ()
-        |. P.chompWhile (U.neither U.isComma U.isListEnd)
+    P.chompWhile (U.neither U.isComma U.isListEnd)
         |> P.getChompedString
-        |> P.map (Ast.fromString << String.replace "\\" "\\\\")
+        |> P.map (\l -> Ast.fromString (String.replace "\\" "\\\\" l))
 
 
 listInlineNext : List Ast.Value -> Ast.Value -> P.Parser (P.Step (List Ast.Value) (List Ast.Value))
@@ -385,7 +309,7 @@ record indent property =
             P.succeed identity
                 |= P.loop [ ( property, value_ ) ] (recordStep indent)
                 |> P.andThen duplicatedPropertyKeysCheck
-                |> P.map (Ast.Record_ << Dict.fromList)
+                |> P.map (\l -> Ast.Record_ (Dict.fromList l))
     in
     recordElementValue indent
         |> P.andThen confirmed
@@ -474,7 +398,7 @@ recordElementValue indent =
 {-| -}
 recordInline : P.Parser Ast.Value
 recordInline =
-    P.succeed (Ast.Record_ << Dict.fromList)
+    P.succeed (\l -> Ast.Record_ (Dict.fromList l))
         |. P.chompIf U.isRecordStart
         |. U.whitespace
         |= recordInlineStepOne

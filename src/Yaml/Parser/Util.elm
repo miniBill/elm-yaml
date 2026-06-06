@@ -185,7 +185,7 @@ multilineStep indent lines =
     in
     P.oneOf
         [ P.succeed conclusion
-            |= characters (not << isNewLine)
+            |= characters (\c -> c /= '\n')
             |= P.oneOf
                 [ P.succeed (\e i -> Just ( e, i ))
                     |. P.chompIf isNewLine
@@ -236,8 +236,7 @@ characters isOk =
             P.oneOf
                 [ P.succeed (done chars)
                     |. comment
-                , P.succeed ()
-                    |. P.chompIf isOk
+                , P.chompIf isOk
                     |> P.getChompedString
                     |> P.map (more chars)
                 , P.succeed (done chars)
@@ -249,8 +248,7 @@ characters isOk =
 {-| -}
 characters_ : (Char -> Bool) -> P.Parser String
 characters_ isOk =
-    P.succeed ()
-        |. P.chompWhile isOk
+    P.chompWhile isOk
         |> P.getChompedString
 
 
@@ -259,7 +257,7 @@ singleQuotes : P.Parser String
 singleQuotes =
     P.succeed (String.replace "\\" "\\\\")
         |. P.symbol "'"
-        |= characters_ (not << isSingleQuote)
+        |= characters_ (\c -> not (isSingleQuote c))
         |. P.symbol "'"
         |. spaces
 
@@ -269,7 +267,7 @@ doubleQuotes : P.Parser String
 doubleQuotes =
     P.succeed identity
         |. P.symbol "\""
-        |= characters_ (not << isDoubleQuote)
+        |= characters_ (\c -> not (isDoubleQuote c))
         |. P.symbol "\""
         |. spaces
 
@@ -277,8 +275,7 @@ doubleQuotes =
 {-| -}
 remaining : P.Parser String
 remaining =
-    P.succeed ()
-        |. Parser.Workaround.chompUntilEndOrBefore "\n...\n"
+    Parser.Workaround.chompUntilEndOrBefore "\n...\n"
         |> P.getChompedString
 
 
@@ -295,13 +292,8 @@ postProcessString str =
 
 postProcessFoldedString : String -> String
 postProcessFoldedString str =
-    let
-        regexFromString : String -> Regex
-        regexFromString =
-            Regex.fromString >> Maybe.withDefault Regex.never
-    in
     str
-        |> Regex.replace (regexFromString "\\s\\s+")
+        |> Regex.replace multipleSpacesRegex
             (\match ->
                 if String.contains "\n\n" match.match then
                     "\n"
@@ -311,12 +303,20 @@ postProcessFoldedString str =
             )
 
 
+multipleSpacesRegex : Regex
+multipleSpacesRegex =
+    Regex.fromString "\\s{2,}"
+        |> Maybe.withDefault Regex.never
+
+
 isLiteralString : String -> Bool
 isLiteralString str =
-    str
-        |> String.split "\n"
-        |> List.head
-        |> (==) (Just "|")
+    case String.split "\n" str of
+        "|" :: _ ->
+            True
+
+        _ ->
+            False
 
 
 postProcessLiteralString : String -> String

@@ -279,7 +279,7 @@ suite =
                         |> Expect.equal
                             (Ok
                                 (List.map
-                                    (postProcessString << String.replace "\\" "\\\\")
+                                    (\s -> postProcessString (String.replace "\\" "\\\\" s))
                                     sanitised
                                 )
                             )
@@ -401,6 +401,6 @@ suite =
 
 {-| Utility function that sets up a test.
 -}
-given : String -> Yaml.Decoder a -> Result (Yaml.Error String) a
+given : String -> Yaml.Decoder a -> Result Yaml.Error a
 given input decoder =
     Yaml.fromString decoder input

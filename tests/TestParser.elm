@@ -1,11 +1,13 @@
 module TestParser exposing (suite)
 
+import Ansi.Color
 import Dict
 import Expect
 import Expectations exposing (expectCloseTo)
 import Format exposing (formatFloat)
 import Fuzz exposing (float, int)
-import Parser as P
+import Parser as P exposing (DeadEnd)
+import Parser.Error
 import Test
 import Yaml.Parser as Parser
 import Yaml.Parser.Ast as Ast
@@ -618,7 +620,7 @@ expectRawAst subject expected =
 
 expectValue : String -> Ast.Value -> Expect.Expectation
 expectValue subject expected =
-    case ( Parser.fromString subject, expected ) of
+    case ( Parser.parse subject, expected ) of
         ( Ok (Ast.Float_ got), Ast.Float_ want ) ->
             expectCloseTo got want
 
@@ -626,12 +628,28 @@ expectValue subject expected =
             Expect.equal got expected
 
         ( Err err, _ ) ->
-            Expect.fail err
+            Expect.fail (errorToString subject err)
+
+
+errorToString : String -> List DeadEnd -> String
+errorToString src deadEnds =
+    Parser.Error.renderError
+        { text = identity
+        , formatContext = Ansi.Color.fontColor Ansi.Color.cyan
+        , formatCaret = Ansi.Color.fontColor Ansi.Color.red
+        , newline = "\n"
+        , linesOfExtraContext = 3
+        }
+        Parser.Error.forParser
+        -- or Parser.Error.forParserAdvanced
+        src
+        deadEnds
+        |> String.concat
 
 
 expectErr : String -> Expect.Expectation
 expectErr subject =
-    Parser.fromString subject
+    Parser.parse subject
         |> Expect.err
 
 
