@@ -625,7 +625,7 @@ expectValue subject expected =
             expectCloseTo got want
 
         ( Ok got, _ ) ->
-            Expect.equal got expected
+            Expect.equal expected got
 
         ( Err err, _ ) ->
             Expect.fail (errorToString subject err)
