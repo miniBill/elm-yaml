@@ -1,17 +1,7 @@
 module Yaml.Parser.Util exposing
     ( doubleQuotes
     , indented
-    , isColon
-    , isComma
-    , isListEnd
-    , isListStart
-    , isNewLine
-    , isRecordEnd
-    , isRecordStart
-    , isSpace
     , multiline
-    , neither
-    , neither3
     , postProcessFoldedString
     , postProcessString
     , remaining
@@ -29,81 +19,6 @@ import Regex exposing (Regex)
 
 
 -- QUESTIONS
-
-
-{-| -}
-isColon : Char -> Bool
-isColon x =
-    x == ':'
-
-
-{-| -}
-isComma : Char -> Bool
-isComma x =
-    x == ','
-
-
-{-| -}
-isSpace : Char -> Bool
-isSpace x =
-    x == ' '
-
-
-{-| -}
-isNewLine : Char -> Bool
-isNewLine x =
-    x == '\n'
-
-
-{-| -}
-isListStart : Char -> Bool
-isListStart x =
-    x == '['
-
-
-{-| -}
-isListEnd : Char -> Bool
-isListEnd x =
-    x == ']'
-
-
-{-| -}
-isRecordStart : Char -> Bool
-isRecordStart x =
-    x == '{'
-
-
-{-| -}
-isRecordEnd : Char -> Bool
-isRecordEnd x =
-    x == '}'
-
-
-{-| -}
-isSingleQuote : Char -> Bool
-isSingleQuote x =
-    x == '\''
-
-
-{-| -}
-isDoubleQuote : Char -> Bool
-isDoubleQuote x =
-    x == '"'
-
-
-{-| -}
-neither : (Char -> Bool) -> (Char -> Bool) -> Char -> Bool
-neither f1 f2 char =
-    not (f1 char) && not (f2 char)
-
-
-{-| -}
-neither3 : (Char -> Bool) -> (Char -> Bool) -> (Char -> Bool) -> Char -> Bool
-neither3 f1 f2 f3 char =
-    not (f1 char) && not (f2 char) && not (f3 char)
-
-
-
 --
 
 
@@ -122,7 +37,7 @@ threeDots =
 {-| -}
 spaces : P.Parser ()
 spaces =
-    P.chompWhile isSpace
+    P.chompWhile (\c -> c == ' ')
 
 
 {-| -}
@@ -188,7 +103,7 @@ multilineStep indent lines =
             |= characters (\c -> c /= '\n')
             |= P.oneOf
                 [ P.succeed (\e i -> Just ( e, i ))
-                    |. P.chompIf isNewLine
+                    |. P.symbol "\n"
                     |. spaces
                     |= emptyLines
                     |= P.getCol
@@ -208,7 +123,7 @@ emptyLinesStep : Int -> P.Parser (P.Step Int Int)
 emptyLinesStep count =
     P.oneOf
         [ P.succeed (P.Loop (count + 1))
-            |. P.chompIf isNewLine
+            |. P.symbol "\n"
             |. spaces
         , P.succeed (P.Done count)
         ]
@@ -257,7 +172,7 @@ singleQuotes : P.Parser String
 singleQuotes =
     P.succeed (String.replace "\\" "\\\\")
         |. P.symbol "'"
-        |= characters_ (\c -> not (isSingleQuote c))
+        |= characters_ (\c -> c /= '\'')
         |. P.symbol "'"
         |. spaces
 
@@ -267,7 +182,7 @@ doubleQuotes : P.Parser String
 doubleQuotes =
     P.succeed identity
         |. P.symbol "\""
-        |= characters_ (\c -> not (isDoubleQuote c))
+        |= characters_ (\c -> c /= '"')
         |. P.symbol "\""
         |. spaces
 

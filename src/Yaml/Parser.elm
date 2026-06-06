@@ -146,7 +146,7 @@ listElementValue indent =
 listInline : P.Parser Ast.Value
 listInline =
     P.succeed Ast.List_
-        |. P.chompIf U.isListStart
+        |. P.symbol "["
         |. U.whitespace
         |= listInlineStepOne
 
@@ -155,7 +155,7 @@ listInlineStepOne : P.Parser (List Ast.Value)
 listInlineStepOne =
     P.oneOf
         [ P.succeed []
-            |. P.chompIf U.isListEnd
+            |. P.symbol "]"
         , P.succeed identity
             |= P.loop [] listInlineStep
         ]
@@ -191,7 +191,7 @@ listInlineValue =
 
 listInlineString : P.Parser Ast.Value
 listInlineString =
-    P.chompWhile (U.neither U.isComma U.isListEnd)
+    P.chompWhile (\c -> c /= ',' && c /= ']')
         |> P.getChompedString
         |> P.map (\l -> Ast.fromString (String.replace "\\" "\\\\" l))
 
@@ -208,7 +208,7 @@ listInlineNext elements element =
                 , P.succeed (listInlineOnMore elements element)
                 ]
         , P.succeed (listInlineOnDone elements element)
-            |. P.chompIf U.isListEnd
+            |. P.symbol "]"
         ]
 
 
@@ -263,12 +263,12 @@ recordOrString indent indent_ =
     P.oneOf
         [ quotedString indent_
         , P.succeed identity
-            |. P.chompIf (U.neither U.isColon U.isNewLine)
-            |. P.chompWhile (U.neither U.isColon U.isNewLine)
+            |. P.chompIf (\c -> c /= ':' && c /= '\n')
+            |. P.chompWhile (\c -> c /= ':' && c /= '\n')
             |> P.getChompedString
             |> P.andThen withString
         , P.succeed identity
-            |. P.chompWhile U.isColon
+            |. P.chompWhile (\c -> c == ':')
             |> P.getChompedString
             |> P.andThen withString
         ]
@@ -348,14 +348,14 @@ recordElement indent =
             P.oneOf
                 [ U.singleQuotes
                 , U.doubleQuotes
-                , P.chompWhile (U.neither U.isColon U.isNewLine)
+                , P.chompWhile (\c -> c /= ':' && c /= '\n')
                     |> P.getChompedString
                 ]
     in
     P.succeed Tuple.pair
         |= property
         |. U.spaces
-        |. P.chompIf U.isColon
+        |. P.symbol ":"
         |= recordElementValue indent
 
 
@@ -399,7 +399,7 @@ recordElementValue indent =
 recordInline : P.Parser Ast.Value
 recordInline =
     P.succeed (\l -> Ast.Record_ (Dict.fromList l))
-        |. P.chompIf U.isRecordStart
+        |. P.symbol "{"
         |. U.whitespace
         |= recordInlineStepOne
 
@@ -408,7 +408,7 @@ recordInlineStepOne : P.Parser (List Ast.Property)
 recordInlineStepOne =
     P.oneOf
         [ P.succeed []
-            |. P.chompIf U.isRecordEnd
+            |. P.symbol "}"
         , P.succeed identity
             |= P.loop [] recordInlineStep
         ]
@@ -482,14 +482,14 @@ recordInlinePropertyName =
             , U.doubleQuotes
             , recordInlinePropertyNameString
             ]
-        |. P.chompWhile U.isSpace
+        |. P.chompWhile (\c -> c == ' ')
         |. P.oneOf
-            [ P.chompIf U.isColon
+            [ P.symbol ":"
             , P.problem "I was parsing an inline record, when I ran into an invalid property. It is missing the \":\"!"
             ]
         |. P.oneOf
-            [ P.chompIf U.isNewLine
-            , P.chompIf U.isSpace
+            [ P.symbol "\n"
+            , P.symbol " "
             , P.problem "I was parsing an inline record, but missing a space or a new line between the \":\" and the value!"
             ]
 
@@ -498,7 +498,7 @@ recordInlinePropertyNameString : P.Parser String
 recordInlinePropertyNameString =
     -- TODO allow numeric name
     P.succeed ()
-        |. P.chompWhile (U.neither3 U.isColon U.isComma U.isRecordEnd)
+        |. P.chompWhile (\c -> c /= ':' && c /= ',' && c /= '}')
         |. U.whitespace
         |> P.getChompedString
         |> P.map String.trim
@@ -525,7 +525,7 @@ recordInlinePropertyValue =
 recordInlineString : P.Parser Ast.Value
 recordInlineString =
     P.succeed ()
-        |. P.chompWhile (U.neither U.isComma U.isRecordEnd)
+        |. P.chompWhile (\c -> c /= ',' && c /= '}')
         |> P.getChompedString
         |> P.map Ast.fromString
 
@@ -534,9 +534,9 @@ recordInlineNext : List Ast.Property -> Ast.Property -> P.Parser (P.Step (List A
 recordInlineNext elements element =
     P.oneOf
         [ P.succeed (recordInlineOnMore elements element)
-            |. P.chompIf U.isComma
+            |. P.symbol ","
         , P.succeed (recordInlineOnDone elements element)
-            |. P.chompIf U.isRecordEnd
+            |. P.symbol "}"
         ]
 
 
