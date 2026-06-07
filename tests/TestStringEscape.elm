@@ -36,7 +36,7 @@ specificStringParseTest =
     testCases
         |> List.map
             (\( input, output ) ->
-                Test.test ("Parsing check " ++ input) <|
+                Test.test ("Parsing check " ++ escape input) <|
                     \_ ->
                         checkIsParsedAs output input
             )

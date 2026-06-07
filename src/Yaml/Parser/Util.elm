@@ -214,6 +214,9 @@ doubleQuotesHelp revChunks =
     P.oneOf
         [ P.symbol "\""
             |> P.map (\() -> P.Done (String.concat (List.reverse revChunks)))
+        , P.succeed (P.Loop (mapFirst String.trimRight revChunks))
+            |. P.symbol "\\\n"
+            |. P.chompWhile (\c -> c == ' ')
         , P.succeed (\e -> P.Loop (String.fromChar e :: revChunks))
             |. P.symbol "\\"
             |= escapeParser
@@ -236,6 +239,7 @@ escapeParser : P.Parser Char
 escapeParser =
     P.oneOf
         [ P.succeed '"' |. P.token "\""
+        , P.succeed ' ' |. P.token " "
         , P.succeed '\\' |. P.token "\\"
         , P.succeed '/' |. P.token "/"
         , P.succeed '\u{0008}' |. P.token "b"
