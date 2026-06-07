@@ -153,7 +153,7 @@ suite =
                 expectValue "[ \\ ]" <| Ast.List_ [ Ast.String_ "\\\\" ]
         , Test.test "an inline list with a quoted backslash" <|
             \_ ->
-                expectValue "['\\']" <| Ast.List_ [ Ast.String_ "\\\\" ]
+                expectValue "['\\']" <| Ast.List_ [ Ast.String_ "\\" ]
         , Test.test "a list with an empty quoted string" <|
             \_ ->
                 expectValue " - ''" <| Ast.List_ [ Ast.String_ "" ]

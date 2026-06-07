@@ -5,6 +5,7 @@ import Expect
 import Expectations exposing (expectCloseTo, expectFail, toExpect)
 import Format exposing (formatFloat)
 import Fuzz exposing (bool, float, int, list, string)
+import Json.Encode
 import Test
 import Yaml.Decode as Yaml
 import Yaml.Parser.Util exposing (postProcessString)
@@ -272,17 +273,11 @@ suite =
                         strList =
                             "["
                                 ++ String.join ", "
-                                    (List.map quoteString sanitised)
+                                    (List.map (\i -> Json.Encode.encode 0 (Json.Encode.string i)) sanitised)
                                 ++ "]"
                     in
                     given strList (Yaml.list Yaml.string)
-                        |> Expect.equal
-                            (Ok
-                                (List.map
-                                    (\s -> postProcessString (String.replace "\\" "\\\\" s))
-                                    sanitised
-                                )
-                            )
+                        |> Expect.equal (Ok sanitised)
             , Test.fuzz (list bool) "list of boolean values" <|
                 \xs ->
                     let

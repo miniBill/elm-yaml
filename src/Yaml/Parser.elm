@@ -281,11 +281,14 @@ quotedString indent =
         withQuote quote =
             P.oneOf
                 [ recordProperty indent quote
-                , P.succeed (Ast.String_ <| U.postProcessFoldedString quote)
+                , P.succeed (Ast.String_ quote)
                 ]
     in
     P.succeed identity
-        |= P.oneOf [ U.singleQuotes, U.doubleQuotes ]
+        |= P.oneOf
+            [ U.singleQuotes
+            , U.doubleQuotes
+            ]
         |. U.spaces
         |> P.andThen withQuote
 

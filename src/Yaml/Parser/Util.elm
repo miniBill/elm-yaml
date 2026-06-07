@@ -2,7 +2,6 @@ module Yaml.Parser.Util exposing
     ( doubleQuotes
     , indented
     , multiline
-    , postProcessFoldedString
     , postProcessString
     , remaining
     , singleQuotes
@@ -161,19 +160,11 @@ characters isOk =
 
 
 {-| -}
-characters_ : (Char -> Bool) -> P.Parser String
-characters_ isOk =
-    P.chompWhile isOk
-        |> P.getChompedString
-
-
-{-| -}
 singleQuotes : P.Parser String
 singleQuotes =
-    P.succeed (String.replace "\\" "\\\\")
+    P.succeed identity
         |. P.symbol "'"
-        |= characters_ (\c -> c /= '\'')
-        |. P.symbol "'"
+        |= P.loop [] singleQuotesHelp
         |. spaces
 
 
@@ -182,9 +173,121 @@ doubleQuotes : P.Parser String
 doubleQuotes =
     P.succeed identity
         |. P.symbol "\""
-        |= characters_ (\c -> c /= '"')
-        |. P.symbol "\""
+        |= P.loop [] doubleQuotesHelp
         |. spaces
+
+
+singleQuotesHelp : List String -> P.Parser (P.Step (List String) String)
+singleQuotesHelp revChunks =
+    P.oneOf
+        [ P.succeed (P.Loop ("'" :: revChunks))
+            |. P.symbol "''"
+        , P.symbol "'"
+            |> P.map (\() -> P.Done (String.concat (List.reverse revChunks)))
+        , P.succeed (\e -> P.Loop (e :: revChunks))
+            |= P.getChompedString
+                (P.succeed ()
+                    |. P.chompIf (\c -> c /= '\'' && c /= '\n')
+                    |. P.chompWhile (\c -> c /= '\'' && c /= '\n')
+                )
+        , P.succeed (P.Loop ("\n" :: mapFirst String.trimRight revChunks))
+            |. P.symbol "\n\n"
+            |. P.chompWhile (\c -> c == ' ')
+        , P.succeed (P.Loop (" " :: revChunks))
+            |. P.symbol "\n"
+            |. P.chompWhile (\c -> c == ' ')
+        ]
+
+
+mapFirst : (a -> a) -> List a -> List a
+mapFirst f ls =
+    case ls of
+        [] ->
+            ls
+
+        h :: t ->
+            f h :: t
+
+
+doubleQuotesHelp : List String -> P.Parser (P.Step (List String) String)
+doubleQuotesHelp revChunks =
+    P.oneOf
+        [ P.symbol "\""
+            |> P.map (\() -> P.Done (String.concat (List.reverse revChunks)))
+        , P.succeed (\e -> P.Loop (String.fromChar e :: revChunks))
+            |. P.symbol "\\"
+            |= escapeParser
+        , P.succeed (\e -> P.Loop (e :: revChunks))
+            |= P.getChompedString
+                (P.succeed ()
+                    |. P.chompIf (\c -> c /= '\\' && c /= '"' && c /= '\n')
+                    |. P.chompWhile (\c -> c /= '\\' && c /= '"' && c /= '\n')
+                )
+        , P.succeed (P.Loop ("\n" :: revChunks))
+            |. P.symbol "\n\n"
+            |. P.chompWhile (\c -> c == ' ')
+        , P.succeed (P.Loop (" " :: revChunks))
+            |. P.symbol "\n"
+            |. P.chompWhile (\c -> c == ' ')
+        ]
+
+
+escapeParser : P.Parser Char
+escapeParser =
+    P.oneOf
+        [ P.succeed '"' |. P.token "\""
+        , P.succeed '\\' |. P.token "\\"
+        , P.succeed '/' |. P.token "/"
+        , P.succeed '\u{0008}' |. P.token "b"
+        , P.succeed '\u{000C}' |. P.token "f"
+        , P.succeed '\n' |. P.token "n"
+        , P.succeed '\u{000D}' |. P.token "r"
+        , P.succeed '\t' |. P.token "t"
+        , P.succeed hexChar
+            |. P.token "u"
+            |= P.getChompedString unicodeHexCode
+        ]
+
+
+{-| Parser for a Unicode hexadecimal code.
+
+E.g. "AbCd" or "1234" or "000D".
+
+It will match exactly 4 hex digits, case-insensitive.
+
+-}
+unicodeHexCode : P.Parser ()
+unicodeHexCode =
+    P.succeed ()
+        |. P.chompIf Char.isHexDigit
+        |. P.chompIf Char.isHexDigit
+        |. P.chompIf Char.isHexDigit
+        |. P.chompIf Char.isHexDigit
+
+
+{-| Converts an hex string into the corresponding char.
+-}
+hexChar : String -> Char
+hexChar s =
+    Char.fromCode (String.foldl hexAcc 0 s)
+
+
+hexAcc : Char -> Int -> Int
+hexAcc char total =
+    -- https://github.com/allenap/elm-json-decode-broken/blob/3.0.2/src/Json/Decode/Broken.elm
+    let
+        code : Int
+        code =
+            Char.toCode char
+    in
+    if 0x30 <= code && code <= 0x39 then
+        16 * total + (code - 0x30)
+
+    else if 0x41 <= code && code <= 0x46 then
+        16 * total + (10 + code - 0x41)
+
+    else
+        16 * total + (10 + code - 0x61)
 
 
 {-| -}
