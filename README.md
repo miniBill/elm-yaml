@@ -1,16 +1,18 @@
 # YAML in Elm
 
-[![Tests Actions Status](https://github.com/MaybeJustJames/yaml/workflows/Tests/badge.svg)](https://github.com/MaybeJustJames/yaml/actions/) [![Elm package](https://img.shields.io/elm-package/v/MaybeJustJames/yaml.svg)](https://package.elm-lang.org/packages/MaybeJustJames/yaml/latest/)
+
+[![Tests Actions Status](https://github.com/miniBill/elm-yaml/workflows/Tests/badge.svg)](https://github.com/miniBill/elm-yaml/actions/) [![Elm package](https://img.shields.io/elm-package/v/miniBill/elm-yaml.svg)](https://package.elm-lang.org/packages/miniBill/elm-yaml/latest/)
 
 Convert between type-safe Elm values and [YAML](https://yaml.org).
 
-This is forked from the wonderful
-[terezka/yaml](https://package.elm-lang.org/packages/terezka/yaml/latest/).
+
+This is forked from
+[MaybeJustJames/yaml](https://package.elm-lang.org/packages/MaybeJustJames/yaml/latest/) which is forked from [terezka/yaml](https://package.elm-lang.org/packages/terezka/yaml/latest/).
 
 ## Install
 
 ```bash
-$ elm install MaybeJustJames/yaml
+$ elm install miniBill/elm-yaml
 ```
 
 and import the library in an elm file like this
@@ -22,7 +24,7 @@ import Yaml.Encode -- for encoders
 
 ## Documentation
 
-Find the documentation on [Elm's package website](http://package.elm-lang.org/packages/MaybeJustJames/yaml/latest).
+Find the documentation on [Elm's package website](http://package.elm-lang.org/packages/miniBill/elm-yaml/latest).
 
 ## Example Usage
 

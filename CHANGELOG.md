@@ -5,8 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+
+## [1.0.0]
 ### Fixed
 - Various minor performance improvements ([#50](https://github.com/MaybeJustJames/yaml/pull/50) by [miniBill](https://github.com/miniBill))
+
+---
+This is the pre-fork changelog
 
 ## [2.1.7]
 ### Fixed
