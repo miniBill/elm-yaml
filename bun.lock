@@ -1,0 +1,26 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "devDependencies": {
+        "elm-test-rs": "^3.0.2-0",
+      },
+    },
+  },
+  "packages": {
+    "@mattpiz/elm-test-rs-darwin-arm64": ["@mattpiz/elm-test-rs-darwin-arm64@3.0.2-0", "", { "os": "darwin", "cpu": "arm64" }, "sha512-Gb1f4L09fxF1QfpatoGc41+dfepfzZn7K1eVLU9Zh/ft15vivTg3Snk611dYDo8PdEm+dZ9Xf8GkqX3NTz4BzA=="],
+
+    "@mattpiz/elm-test-rs-darwin-x64": ["@mattpiz/elm-test-rs-darwin-x64@3.0.2-0", "", { "os": "darwin", "cpu": "x64" }, "sha512-ly9pcE0sthEeLigkDdzspKEKxVxLNRN7NaDhlV3zs8beKC+AJmFz5AtGIeDIQ8hfNK6QR0xRQxgevlOTYiWbOA=="],
+
+    "@mattpiz/elm-test-rs-linux-arm": ["@mattpiz/elm-test-rs-linux-arm@3.0.2-0", "", { "os": "linux", "cpu": "arm" }, "sha512-DRjK3rsO0rb0AuCMUcLkuuSJuxpBaMobrAyH5av8MrpPh7cwjZ3RhXzCCeweuhfizH1OP/idBeVlmN8hiqA2BQ=="],
+
+    "@mattpiz/elm-test-rs-linux-arm64": ["@mattpiz/elm-test-rs-linux-arm64@3.0.2-0", "", { "os": "linux", "cpu": "arm64" }, "sha512-SpZjVmeAlBSc46Ku3RefFK4LDwsfmVgPerhFgana95dzaTYoruHNrMWUpqU9MT6FOnbJXiJQHZrI+y4VjJ5lJA=="],
+
+    "@mattpiz/elm-test-rs-linux-x64": ["@mattpiz/elm-test-rs-linux-x64@3.0.2-0", "", { "os": "linux", "cpu": "x64" }, "sha512-Ia8kayW/Aag6tEwJOEV5ZIr49KHekDYZjB/oItyYScySlRxII+VppVYmh47o6xlTz9ZO845UkEyngUMZc25Lkg=="],
+
+    "@mattpiz/elm-test-rs-win32-x64": ["@mattpiz/elm-test-rs-win32-x64@3.0.2-0", "", { "os": "win32", "cpu": "x64" }, "sha512-cxPybYCU0wXmhpc2eFTmxEvffWdXpUILlC+YnB4XG3ddTnMOIUGe6C2rK9DfT3o+9fmeq/OlroKcG5I4/cMxsQ=="],
+
+    "elm-test-rs": ["elm-test-rs@3.0.2-0", "", { "optionalDependencies": { "@mattpiz/elm-test-rs-darwin-arm64": "3.0.2-0", "@mattpiz/elm-test-rs-darwin-x64": "3.0.2-0", "@mattpiz/elm-test-rs-linux-arm": "3.0.2-0", "@mattpiz/elm-test-rs-linux-arm64": "3.0.2-0", "@mattpiz/elm-test-rs-linux-x64": "3.0.2-0", "@mattpiz/elm-test-rs-win32-x64": "3.0.2-0" }, "bin": { "elm-test-rs": "elm-test-rs.js" } }, "sha512-Rzk3PD4unWvuzdzYthUoMjFELL78oRHeYTXpF8KDp/fyHLbb+vxOzmDXHRt51ogvfKSTyiK8y0xa4F+q7lzyfQ=="],
+  }
+}

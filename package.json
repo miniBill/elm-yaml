@@ -1,0 +1,6 @@
+{
+  "license": "BSD-3-Clause",
+  "devDependencies": {
+    "elm-test-rs": "^3.0.2-0"
+  }
+}
